@@ -1,44 +1,63 @@
-# Quiz and Exam Generator Application
+# AI-Powered Quiz & Exam Generator 🚀
 
-A Flask-based web application for generating, managing, and evaluating quizzes and exams with AI assistance.
+[![Demo Video](https://img.youtube.com/vi/6gH_RAfH3Ik/maxresdefault.jpg)](https://www.youtube.com/watch?v=6gH_RAfH3Ik)
 
-## Features
+*A full-stack web application that generates, administers, and evaluates quizzes/exams using AI*
 
-- **User Authentication**: Secure login and signup system
-- **Quiz Generation**: 
-  - AI-powered quiz creation using Google's Gemini API
-  - Customizable topic, difficulty, and number of questions
-  - Subtopics generation for focused quizzes
-- **Exam Generation**:
-  - Create exams with both MCQs and descriptive questions
-  - Customize MCQ vs descriptive question ratio
-  - Set difficulty level and paper style
-- **PDF Export**: Download quizzes and exams as PDFs
-- **Results Analysis**:
-  - Detailed performance analytics
-  - Topic and difficulty breakdowns
-  - Visual charts for performance tracking
-- **Database Integration**: MySQL database for storing quizzes, exams, and results
-- **Responsive Design**: Works on desktop and mobile devices
+## ✨ Features
 
-## Technologies Used
+| Feature Category | Highlights |
+|-----------------|------------|
+| **AI Generation** | Create quizzes/exams with Google Gemini API |
+| **Smart Evaluation** | Auto-grade descriptive answers with AI feedback |
+| **Comprehensive Analytics** | Performance breakdowns by topic/difficulty |
+| **PDF Export** | Download quizzes/exams as printable PDFs |
+| **User Management** | Secure authentication & progress tracking |
 
-- **Backend**: Python, Flask
-- **Frontend**: HTML, CSS, JavaScript, Jinja2 templates
-- **Database**: MySQL
-- **AI Integration**: Google Gemini API (via LangChain)
-- **PDF Generation**: FPDF
-- **Environment Management**: python-dotenv
+## 🎥 Video Demo
 
-## Prerequisites
+[![Watch the full demo](https://img.shields.io/badge/▶_Watch_Full_Demo-FF0000?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=6gH_RAfH3Ik)
 
+**Timestamps:**
+- 00:00 - Introduction & Overview
+- 01:15 - Quiz Generation Demo
+- 03:40 - Exam Evaluation Process
+- 05:25 - Analytics Dashboard
+- 07:10 - PDF Export Feature
+
+## 🛠️ Tech Stack
+
+**Backend:**
+- Python Flask
+- Google Gemini API
+- MySQL Database
+- FPDF (PDF generation)
+
+**Frontend:**
+- HTML5, CSS3, JavaScript
+- Chart.js (Visualizations)
+- Responsive Design
+
+## 🚀 Getting Started
+
+### Prerequisites
 - Python 3.8+
-- MySQL server
-- Google API key for Gemini
+- MySQL Server
+- Google API Key
 
-## Installation
+### Installation
+```bash
+# Clone repository
+git clone https://github.com/yourusername/quiz-exam-generator.git
+cd quiz-exam-generator
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/quiz-exam-generator.git
-   cd quiz-exam-generator
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics | QuizMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+        }
+        
+        .stat-card {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.4s ease;
+            overflow: hidden;
+        }
+        
+        .chart-container:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-ring {
+            transition: stroke-dashoffset 1.5s ease-in-out;
+        }
+        
+        .topic-card {
+            transition: all 0.3s ease;
+            transform: scale(1);
+        }
+        
+        .topic-card:hover {
+            transform: scale(1.03);
+            z-index: 10;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+            70% { box-shadow: 0 0 0 12px rgba(79, 70, 229, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+        }
+        
+        .glow {
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.6);
+        }
+        
+        .progress-bar {
+            transition: width 1.5s ease-in-out;
+        }
+        
+        .difficulty-easy-bg { background-color: #dcfce7; }
+        .difficulty-medium-bg { background-color: #fef9c3; }
+        .difficulty-hard-bg { background-color: #fee2e2; }
+        .difficulty-easy-text { color: #166534; }
+        .difficulty-medium-text { color: #854d0e; }
+        .difficulty-hard-text { color: #991b1b; }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64 border-r border-gray-200 bg-white">
+                <a href="{{ url_for('Home') }}">
+                    <div class="flex items-center h-16 px-4 border-b border-gray-200">
+                        <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src="../static/images/logo.png" alt="QuizMaster Logo"
+                                class="w-full h-full object-contain">
+                        </div>
+                        <span class="text-xl font-bold text-gray-900 ml-2">QuizMaster</span>
+                    </div>
+                </a>
+
+                <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+                    <nav class="flex-1 space-y-2">
+                        <a href="{{ url_for('dashboard') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-home text-gray-500 mr-3"></i>
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('index') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-plus-circle text-gray-500 mr-3"></i>
+                            Create Quiz
+                        </a>
+                        <a href="{{ url_for('load_quiz') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-history text-gray-500 mr-3"></i>
+                            Load Quiz
+                        </a>
+                        <a href="{{ url_for('my_quizzes') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-graduation-cap text-gray-500 mr-3"></i>
+                            My Quizzes
+                        </a>
+                        <a href="{{ url_for('analytics') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-900 bg-blue-50 rounded-lg">
+                            <i class="fas fa-chart-line text-blue-500 mr-3"></i>
+                            Analytics
+                        </a>
+                    </nav>
+                </div>
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <img class="h-10 w-10 rounded-full" src="../static/images/profile.png"
+                                alt="User avatar">
+                            <span class="absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white bg-green-500"></span>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-900">{{ session['username'] }}</p>
+                            <p class="text-xs text-gray-500">Member since 2025</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}"
+                        class="mt-4 w-full flex items-center justify-center px-4 py-2 text-sm text-gray-600 hover:text-red-600 rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Sign out
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 overflow-auto">
+            <!-- Top navigation -->
+            <nav class="bg-white shadow-sm">
+                <div class="px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center h-16">
+                        <div class="flex items-center">
+                            <button class="md:hidden text-gray-500 mr-4">
+                                <i class="fas fa-bars text-xl"></i>
+                            </button>
+                            <h1 class="text-xl font-semibold text-gray-900">Performance Analytics</h1>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="relative">
+                                <button class="text-gray-500 hover:text-gray-700 relative">
+                                    <i class="fas fa-bell text-xl"></i>
+                                    <span class="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500"></span>
+                                </button>
+                            </div>
+                            <div class="flex items-center">
+                                <img class="h-8 w-8 rounded-full" src="../static/images/profile.png"
+                                    alt="User avatar">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main content area -->
+            <main class="p-4 sm:p-6 lg:p-8">
+                <!-- Header -->
+                <div class="mb-8 text-center">
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Your Learning Analytics</h1>
+                    <p class="text-gray-600 max-w-2xl mx-auto">Track your progress, identify strengths, and discover areas for improvement</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card fade-in p-6">
+                        <div class="flex items-center">
+                            <div class="bg-blue-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-check-circle text-blue-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Quizzes Completed</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ analytics_data.quizzes_completed }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Progress</span>
+                                <span>{{ (analytics_data.quizzes_completed / 30 * 100)|round(1) if analytics_data.quizzes_completed < 30 else 100 }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="progress-bar bg-blue-600 h-2 rounded-full" 
+                                     style="width: {{ (analytics_data.quizzes_completed / 30 * 100)|round(1) if analytics_data.quizzes_completed < 30 else 100 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card fade-in p-6">
+                        <div class="flex items-center">
+                            <div class="bg-green-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-chart-line text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Average Score</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ analytics_data.average_score }}%</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Target</span>
+                                <span>90%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="progress-bar bg-green-600 h-2 rounded-full" 
+                                     style="width: {{ analytics_data.average_score }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card fade-in p-6">
+                        <div class="flex items-center">
+                            <div class="bg-purple-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-trophy text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Mastered Topics</p>
+                                {% set mastered_topics = namespace(count=0) %}
+                                {% for score in analytics_data.topic_mastery.scores %}
+                                    {% if score >= 80 %}
+                                        {% set mastered_topics.count = mastered_topics.count + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                <p class="text-2xl font-bold text-gray-900">{{ mastered_topics.count }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Learning</span>
+                                <span>{{ analytics_data.topic_mastery.topics|length }} Topics</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="progress-bar bg-purple-600 h-2 rounded-full" 
+                                     style="width: {{ (mastered_topics.count / analytics_data.topic_mastery.topics|length * 100)|round(1) if analytics_data.topic_mastery.topics|length > 0 else 0 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card fade-in p-6">
+                        <div class="flex items-center">
+                            <div class="bg-yellow-100 p-3 rounded-full mr-4">
+                                <i class="fas fa-bolt text-yellow-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Current Streak</p>
+                                <p class="text-2xl font-bold text-gray-900">12 days</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Best Streak</span>
+                                <span>21 days</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="progress-bar bg-yellow-500 h-2 rounded-full" style="width: 57%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <!-- Score Progress Chart -->
+                    <div class="chart-container fade-in p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-semibold text-gray-900">Score Progress Over Time</h2>
+                            <div class="flex space-x-2">
+                                <button class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="h-80">
+                            <canvas id="progressChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Topic Mastery Chart -->
+                    <div class="chart-container fade-in p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-semibold text-gray-900">Topic Mastery</h2>
+                            <div class="flex space-x-2">
+                                <button class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="h-80">
+                            <canvas id="masteryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Additional Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                    <!-- Difficulty Distribution -->
+                    <div class="chart-container fade-in p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-semibold text-gray-900">Difficulty Distribution</h2>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="difficultyChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Time of Day Performance -->
+                    <div class="chart-container fade-in p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-semibold text-gray-900">Time of Day Performance</h2>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Topic Performance Cards -->
+                    <div class="chart-container fade-in p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-semibold text-gray-900">Top Performing Topics</h2>
+                        </div>
+                        <div class="space-y-4">
+                            {% for i in range(3) if i < analytics_data.topic_mastery.topics|length %}
+                            {% set topic = analytics_data.topic_mastery.topics[i] %}
+                            {% set score = analytics_data.topic_mastery.scores[i] %}
+                            <div class="p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h3 class="font-medium text-gray-900">{{ topic }}</h3>
+                                        <div class="flex items-center mt-1">
+                                            <span class="text-sm text-gray-600">Mastery: {{ score|round(1) }}%</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                            {% if score >= 80 %}bg-green-100 text-green-800
+                                            {% elif score >= 60 %}bg-yellow-100 text-yellow-800
+                                            {% else %}bg-red-100 text-red-800{% endif %}">
+                                            {% if score >= 80 %}Mastered
+                                            {% elif score >= 60 %}Proficient
+                                            {% else %}Learning{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 w-full bg-gray-200 rounded-full h-2">
+                                    <div class="h-2 rounded-full 
+                                        {% if score >= 80 %}bg-green-500
+                                        {% elif score >= 60 %}bg-yellow-500
+                                        {% else %}bg-red-500{% endif %}" 
+                                        style="width: {{ score }}%"></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Improvement Recommendations -->
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl shadow-xl overflow-hidden mb-8 fade-in">
+                    <div class="p-6 md:p-8">
+                        <div class="flex flex-col md:flex-row md:items-center">
+                            <div class="flex-1">
+                                <h2 class="text-xl font-bold text-white mb-2">Personalized Study Recommendations</h2>
+                                <p class="text-indigo-100 max-w-xl">Based on your performance, we've identified areas where you can focus to improve your scores</p>
+                            </div>
+                            <div class="mt-4 md:mt-0">
+                                <button class="px-5 py-3 bg-white text-indigo-600 font-semibold rounded-lg shadow-md hover:bg-gray-100 transition duration-300 flex items-center">
+                                    <i class="fas fa-book-open mr-2"></i> View Study Plan
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {% for rec in analytics_data.recommendations %}
+                            <div class="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4">
+                                <div class="flex items-center">
+                                    <div class="bg-white bg-opacity-30 p-2 rounded-lg mr-3">
+                                        <i class="fas fa-brain text-white"></i>
+                                    </div>
+                                    <h3 class="text-white font-semibold">{{ rec.topic }}</h3>
+                                </div>
+                                <p class="text-indigo-100 text-sm mt-2">
+                                    Accuracy: {{ rec.accuracy }}% ({{ rec.question_count }} questions)
+                                </p>
+                            </div>
+                            {% else %}
+                            <div class="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4">
+                                <div class="flex items-center">
+                                    <div class="bg-white bg-opacity-30 p-2 rounded-lg mr-3">
+                                        <i class="fas fa-check-circle text-white"></i>
+                                    </div>
+                                    <h3 class="text-white font-semibold">Great job!</h3>
+                                </div>
+                                <p class="text-indigo-100 text-sm mt-2">
+                                    You're performing well across all topics. Keep up the good work!
+                                </p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Prepare analytics data
+            const analyticsData = JSON.parse('{{ analytics_data|tojson|safe }}');
+            
+            // Add delay for animations
+            setTimeout(() => {
+                initCharts(analyticsData);
+                animateProgressBars();
+            }, 300);
+        });
+        
+        function animateProgressBars() {
+            const progressBars = document.querySelectorAll('.progress-bar');
+            progressBars.forEach(bar => {
+                // Reset width to 0 for animation
+                const width = bar.style.width;
+                bar.style.width = '0';
+                
+                // Animate to actual width after delay
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 500);
+            });
+        }
+        
+        function initCharts(analyticsData) {
+            // Score Progress Chart (Line Chart)
+            const progressCtx = document.getElementById('progressChart').getContext('2d');
+            const progressChart = new Chart(progressCtx, {
+                type: 'line',
+                data: {
+                    labels: analyticsData.score_progress.dates,
+                    datasets: [{
+                        label: 'Your Scores',
+                        data: analyticsData.score_progress.scores,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#4f46e5',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#1e293b',
+                            bodyColor: '#1e293b',
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1,
+                            padding: 12,
+                            boxPadding: 4,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Score: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Topic Mastery Chart (Radar Chart)
+            const masteryCtx = document.getElementById('masteryChart').getContext('2d');
+            const masteryChart = new Chart(masteryCtx, {
+                type: 'radar',
+                data: {
+                    labels: analyticsData.topic_mastery.topics,
+                    datasets: [{
+                        label: 'Mastery Score',
+                        data: analyticsData.topic_mastery.scores,
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        borderColor: '#4f46e5',
+                        pointBackgroundColor: '#4f46e5',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#4f46e5',
+                        borderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            ticks: {
+                                display: false,
+                                stepSize: 20
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Score: ${context.parsed.r}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Difficulty Distribution (Pie Chart)
+            const difficultyCtx = document.getElementById('difficultyChart').getContext('2d');
+            const difficultyChart = new Chart(difficultyCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: analyticsData.difficulty_dist.difficulties,
+                    datasets: [{
+                        data: analyticsData.difficulty_dist.counts,
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(245, 158, 11, 1)',
+                            'rgba(239, 68, 68, 1)'
+                        ],
+                        borderWidth: 1,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.chart.getDatasetMeta(0).total;
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} quizzes (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+            
+            // Time of Day Performance (Bar Chart)
+            const timeCtx = document.getElementById('timeChart').getContext('2d');
+            const timeChart = new Chart(timeCtx, {
+                type: 'bar',
+                data: {
+                    labels: analyticsData.time_performance.times,
+                    datasets: [{
+                        label: 'Average Score',
+                        data: analyticsData.time_performance.scores,
+                        backgroundColor: [
+                            'rgba(56, 189, 248, 0.7)',
+                            'rgba(34, 197, 94, 0.7)',
+                            'rgba(251, 146, 60, 0.7)',
+                            'rgba(139, 92, 246, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(56, 189, 248, 1)',
+                            'rgba(34, 197, 94, 1)',
+                            'rgba(251, 146, 60, 1)',
+                            'rgba(139, 92, 246, 1)'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Score: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

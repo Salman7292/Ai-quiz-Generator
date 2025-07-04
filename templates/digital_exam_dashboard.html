@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Dashboard | QuizMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background-color: #f3f4f6;
+            transform: translateX(4px);
+        }
+        .sidebar-item.active {
+            background-color: #eef2ff;
+            border-left: 4px solid #4f46e5;
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="sidebar hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64 border-r border-gray-200 bg-white">
+                <a href="{{ url_for('Home') }}">
+                    <div class="flex items-center h-16 px-4 border-b border-gray-200">
+                        <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src="../static/images/logo.png" alt="QuizMaster Logo" class="w-full h-full object-contain">
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">QuizMaster</span>
+                    </div>
+                </a>
+
+                <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+                    <nav class="flex-1 space-y-2">
+                        <a href="{{ url_for('dashboard') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-home text-gray-500 mr-3"></i>
+                            Quiz Dashboard
+                        </a>
+                        <a href="{{ url_for('digital_exam_stats') }}"
+                            class="sidebar-item active flex items-center px-4 py-3 text-sm font-medium text-gray-900 rounded-lg">
+                            <i class="fas fa-clipboard-check text-gray-500 mr-3"></i>
+                            Exam Dashboard
+                        </a>
+                        <a href="{{ url_for('digital_exam') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-plus-circle text-gray-500 mr-3"></i>
+                            Create Exam
+                        </a>
+                         <a href="{{ url_for('load_exam') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-900 rounded-lg">
+                            <i class="fas fa-history text-gray-500 mr-3"></i>
+                            Load Exam
+                        </a>
+
+                         <a href="{{ url_for('digital_exam_analytics') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-900 rounded-lg">
+                            <i class="fas fa-chart-bar text-blue-500 mr-3"></i>
+                            Exam Analytics
+                        </a>
+
+                    </nav>
+                </div>
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex items-center">
+                        <img class="h-10 w-10 rounded-full" src="../static/images/profile.png" alt="User avatar">
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-900">{{ session['username'] }}</p>
+                            <p class="text-xs text-gray-500">Member since {{ exam_stats.created_at.strftime('%Y') if exam_stats and exam_stats.created_at else '2025' }}</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}"
+                        class="mt-4 w-full flex items-center justify-center px-4 py-2 text-sm text-gray-600 hover:text-red-600 rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Sign out
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 overflow-auto">
+            <!-- Top navigation -->
+            <nav class="bg-white shadow-sm">
+                <div class="px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center h-16">
+                        <div class="flex items-center">
+                            <button class="md:hidden text-gray-500 mr-4">
+                                <i class="fas fa-bars text-xl"></i>
+                            </button>
+                            <h1 class="text-xl font-semibold text-gray-900">Exam Dashboard</h1>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <button class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-bell text-xl"></i>
+                            </button>
+                            <div class="flex items-center">
+                                <img class="h-8 w-8 rounded-full" src="../static/images/profile.png" alt="User avatar">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main content area -->
+            <main class="p-4 sm:p-6 lg:p-8">
+                <!-- Welcome Section -->
+                <div class="mb-8">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                        Your Exam Performance, {{ session['username'] }}!
+                    </h1>
+                    <p class="text-gray-600">Track your progress in generated exams</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="card-hover bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center">
+                            <div class="bg-blue-500 p-3 rounded-lg">
+                                <i class="fas fa-clipboard-check text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Exams Completed</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ exam_stats.exams_completed }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-hover bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center">
+                            <div class="bg-green-500 p-3 rounded-lg">
+                                <i class="fas fa-chart-line text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Average Score</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ exam_stats.average_score }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-hover bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex items-center">
+                            <div class="bg-purple-500 p-3 rounded-lg">
+                                <i class="fas fa-percentage text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Average Percentage</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ exam_stats.average_percentage }}%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Quick Actions -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Exam Actions</h2>
+                            <div class="space-y-3">
+                                <a href="{{ url_for('digital_exam') }}"
+                                    class="flex items-center p-4 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors group">
+                                    <div class="bg-indigo-600 p-2 rounded-lg group-hover:bg-indigo-700 transition-colors">
+                                        <i class="fas fa-plus text-white"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="font-medium text-gray-900">Create New Exam</p>
+                                        <p class="text-sm text-gray-600">Generate custom exams</p>
+                                    </div>
+                                </a>
+
+                                <a href="{{ url_for('my_exams') }}"
+                                    class="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors group">
+                                    <div class="bg-green-600 p-2 rounded-lg group-hover:bg-green-700 transition-colors">
+                                        <i class="fas fa-trophy text-white"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="font-medium text-gray-900">Exam History</p>
+                                        <p class="text-sm text-gray-600">View all your past exams</p>
+                                    </div>
+                                </a>
+
+                                <a href="#"
+                                    class="flex items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors group">
+                                    <div class="bg-yellow-600 p-2 rounded-lg group-hover:bg-yellow-700 transition-colors">
+                                        <i class="fas fa-medal text-white"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="font-medium text-gray-900">Achievements</p>
+                                        <p class="text-sm text-gray-600">View your exam badges</p>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Topic Performance -->
+                        <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Top Topics</h2>
+                            {% if exam_stats.topic_performance %}
+                                <div class="space-y-4">
+                                    {% for topic in exam_stats.topic_performance %}
+                                    <div>
+                                        <div class="flex justify-between mb-1">
+                                            <span class="font-medium text-gray-700">{{ topic.topic }}</span>
+                                            <span class="font-medium text-gray-900">{{ topic.avg_score|round(1) }}</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-blue-600 h-2 rounded-full" 
+                                                 style="width: {{ (topic.avg_score / exam_stats.topic_performance[0].avg_score * 100)|round(1) }}%"></div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-book-open text-gray-400 text-3xl mb-2"></i>
+                                    <p class="text-gray-600">No exam data yet</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Recent Exams -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-xl font-semibold text-gray-900">Recent Exams</h2>
+                                <a href="{{ url_for('load_exam') }}" class="text-indigo-600 hover:text-indigo-700 font-medium">
+                                    View All
+                                </a>
+                            </div>
+
+                            <div class="space-y-4">
+                                {% if exam_stats.recent_exams %}
+                                    {% for exam in exam_stats.recent_exams %}
+                                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div class="flex items-center">
+                                            <div class="bg-indigo-100 p-2 rounded-lg">
+                                                <i class="fas fa-clipboard-check text-indigo-600"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="font-medium text-gray-900">{{ exam.title }}</p>
+                                                <p class="text-sm text-gray-600">{{ exam.completed_at.strftime('%Y-%m-%d') }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-4">
+                                            <div class="text-right">
+                                                <p class="font-semibold text-gray-900">{{ exam.score }}/{{ exam.total_marks }}</p>
+                                                <p class="text-sm text-gray-600">{{ exam.difficulty_level|capitalize }}</p>
+                                            </div>
+                                            <div class="w-16">
+                                                <div class="relative w-12 h-12">
+                                                    <svg class="w-full h-full" viewBox="0 0 36 36">
+                                                        <path
+                                                            d="M18 2.0845
+                                                            a 15.9155 15.9155 0 0 1 0 31.831
+                                                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                            fill="none"
+                                                            stroke="#e6e6e6"
+                                                            stroke-width="3"
+                                                        />
+                                                        <path
+                                                            d="M18 2.0845
+                                                            a 15.9155 15.9155 0 0 1 0 31.831
+                                                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                            fill="none"
+                                                            stroke="#4f46e5"
+                                                            stroke-width="3"
+                                                            stroke-dasharray="{{ (exam.score/exam.total_marks*100) }}, 100"
+                                                        />
+                                                    </svg>
+                                                    <div class="absolute inset-0 flex items-center justify-center">
+                                                        <span class="text-xs font-bold text-gray-700">{{ ((exam.score/exam.total_marks)*100)|round(0) }}%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center py-8">
+                                        <i class="fas fa-clipboard-check text-gray-400 text-4xl mb-2"></i>
+                                        <p class="text-gray-600">No exams completed yet</p>
+                                        <a href="{{ url_for('digital_exam') }}" class="text-indigo-600 hover:text-indigo-700 mt-2 inline-block">
+                                            Create your first exam
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Performance Chart -->
+                        <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Performance Over Time</h2>
+                            {% if exam_stats.recent_exams %}
+                            <div class="h-64">
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const ctx = document.getElementById('performanceChart').getContext('2d');
+                                    const chart = new Chart(ctx, {
+                                        type: 'line',
+                                        data: {
+                                            labels: [
+                                                {% for exam in exam_stats.recent_exams %}
+                                                    "{{ exam.completed_at.strftime('%b %d') }}"{% if not loop.last %},{% endif %}
+                                                {% endfor %}
+                                            ],
+                                            datasets: [{
+                                                label: 'Exam Scores',
+                                                data: [
+                                                    {% for exam in exam_stats.recent_exams %}
+                                                        {{ (exam.score/exam.total_marks*100)|round(0) }}{% if not loop.last %},{% endif %}
+                                                    {% endfor %}
+                                                ],
+                                                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                                                borderColor: 'rgba(79, 70, 229, 1)',
+                                                borderWidth: 2,
+                                                tension: 0.3,
+                                                fill: true
+                                            }]
+                                        },
+                                        options: {
+                                            responsive: true,
+                                            scales: {
+                                                y: {
+                                                    beginAtZero: true,
+                                                    max: 100,
+                                                    ticks: {
+                                                        callback: function(value) {
+                                                            return value + '%';
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                });
+                            </script>
+                            {% else %}
+                            <div class="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <div class="text-center">
+                                    <i class="fas fa-chart-line text-gray-400 text-5xl mb-2"></i>
+                                    <p class="text-gray-600">Complete your first exam to see progress</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Mobile menu toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // You can add any client-side interactivity here
+            console.log('Exam dashboard loaded');
+        });
+    </script>
+</body>
+</html>

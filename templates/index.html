@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quiz Generator | QuizMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.14.0.min.js"></script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(90deg, #4f46e5, #9333ea);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-hover:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .loading-spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background-color: #e5e7eb;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4f46e5, #9333ea);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        
+        .chart-container {
+            height: 200px;
+            width: 100%;
+            background-color: transparent !important;
+        }
+        
+        .option-selected {
+            background-color: #e0e7ff;
+            border-color: #818cf8;
+        }
+        
+        .correct-answer {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        
+        .wrong-answer {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+
+        /* Modern question card styling */
+        .question-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .question-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Modern radio button styling */
+        .custom-radio {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            transition: all 0.2s ease;
+        }
+
+        .custom-radio:checked {
+            border-color: #4f46e5;
+            background-color: #4f46e5;
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .stats-container {
+                flex-direction: column !important;
+            }
+            
+            .chart-container {
+                height: 180px;
+                margin-top: 1.5rem;
+            }
+            
+            .quiz-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .quiz-meta {
+                margin-top: 1rem;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-indigo-50 to-blue-50 min-h-screen font-sans antialiased">
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="{{ url_for('Home') }}">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src="../static/images/logo.png" alt="QuizMaster Logo"
+                                class="w-full h-full object-contain">
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">QuizMaster</span>
+                    </div>
+                </a>
+
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="{{ url_for('Home') }}" class="nav-link text-gray-600 hover:text-indigo-600">Home</a>
+                    <a href="{{ url_for('About') }}" class="nav-link text-gray-600 hover:text-indigo-600">About</a>
+                    {% if 'username' in session %}
+                    <a href="{{ url_for('index') }}" class="nav-link text-gray-600 hover:text-indigo-600">Quiz
+                        Generating</a>
+                     <a href="{{ url_for('digital_exam') }}" class="nav-link text-gray-600 hover:text-indigo-600">Digital Exam</a>
+                    <a href="{{ url_for('dashboard') }}"
+                        class="nav-link text-gray-600 hover:text-indigo-600">Dashboard</a>
+                    <a href="{{ url_for('logout') }}"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors btn-hover">
+                        Logout
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link text-gray-600 hover:text-indigo-600">Login</a>
+                    <a href="{{ url_for('signup') }}"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors btn-hover">
+                        Sign Up
+                    </a>
+                    {% endif %}
+                </div>
+                <button class="md:hidden text-gray-600">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="max-w-4xl mx-auto px-4 pt-6">
+        {% for category, message in messages %}
+        <div
+            class="p-4 mb-4 rounded-lg {% if category == 'success' %}bg-green-100 text-green-800{% elif category == 'danger' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="container mx-auto px-4 py-12">
+        <!-- Header -->
+        <header class="text-center mb-12 animate__animated animate__fadeIn">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                <span class="gradient-text">AI Quiz Generator</span>
+            </h1>
+            <p class="text-lg text-indigo-600">Create custom quizzes in seconds with our advanced AI</p>
+        </header>
+
+        <!-- Quiz Form -->
+        <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 mb-12 card-hover">
+            <form id="quizForm" class="space-y-6">
+                <div>
+                    <label for="topic" class="block text-lg font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lightbulb text-indigo-500 mr-2"></i>
+                        Quiz Topic
+                    </label>
+                    <input type="text" id="topic" name="topic" required
+                        class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300"
+                        placeholder="e.g. Science, History, Programming">
+                    <p class="text-sm text-gray-500 mt-1">Enter a general topic to see specific subtopics</p>
+                </div>
+
+                <!-- Subtopics selection (initially hidden) -->
+                <div id="subtopicsContainer" class="hidden">
+                    <label class="block text-lg font-medium text-gray-700 mb-2">
+                        <i class="fas fa-list-ul text-indigo-500 mr-2"></i>
+                        Select a Specific Subtopic
+                    </label>
+                    <div id="subtopicsLoading" class="flex items-center justify-center py-4 hidden">
+                        <div class="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        <span>Generating subtopics...</span>
+                    </div>
+                    <div id="subtopicsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                </div>
+
+                <div>
+                    <label for="num_questions" class="block text-lg font-medium text-gray-700 mb-2">
+                        <i class="fas fa-list-ol text-indigo-500 mr-2"></i>
+                        Number of Questions
+                    </label>
+                    <input type="number" id="num_questions" name="num_questions" min="1" max="20" value="5" required
+                        class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300">
+                </div>
+
+                <div>
+                    <label class="block text-lg font-medium text-gray-700 mb-2">
+                        <i class="fas fa-chart-line text-indigo-500 mr-2"></i>
+                        Difficulty Level
+                    </label>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="difficulty" value="easy"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500" checked>
+                            <span class="ml-2 text-gray-700">Easy</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="difficulty" value="medium"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Medium</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="difficulty" value="hard"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Hard</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" id="generateBtn"
+                    class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-lg font-bold text-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center btn-hover">
+                    <span id="btnText">Generate Quiz</span>
+                    <div id="loadingSpinner" class="loading-spinner ml-2 hidden"></div>
+                </button>
+            </form>
+        </div>
+
+        <!-- Error Display -->
+        <div id="errorDisplay" class="max-w-2xl mx-auto bg-red-50 border-l-4 border-red-500 p-4 rounded-lg animate__animated animate__shakeX hidden">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500 text-xl mt-1"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Error generating quiz</h3>
+                    <p id="errorMessage" class="text-sm text-red-700 mt-1"></p>
+                    <div class="mt-2">
+                        <button onclick="document.getElementById('errorDisplay').classList.add('hidden')"
+                            class="text-sm text-red-700 hover:text-red-600 font-medium">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 mb-12 hidden card-hover">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-lg text-indigo-700 font-medium">Generating your quiz...</p>
+                <p class="text-gray-500 text-center">Our AI is crafting personalized questions for you. This may take a
+                    moment.</p>
+            </div>
+        </div>
+
+        <!-- Quiz Results -->
+        <div id="quizResults" class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8 card-hover hidden">
+            <div class="text-center mb-8">
+                <h2 id="quizTitle" class="text-3xl font-bold text-gray-900 mb-2"></h2>
+                <div class="flex flex-wrap justify-center gap-4 mt-4">
+                    <span id="questionCount" class="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full font-medium">
+                        <i class="fas fa-question-circle mr-2"></i>
+                        <span id="questionCountText"></span>
+                    </span>
+                    <span id="difficultyLevel" class="bg-purple-100 text-purple-800 px-4 py-2 rounded-full font-medium">
+                        <i class="fas fa-bolt mr-2"></i>
+                        <span id="difficultyLevelText"></span>
+                    </span>
+                </div>
+            </div>
+
+            <div id="questionsContainer" class="space-y-6">
+                <!-- Questions will be inserted here dynamically -->
+            </div>
+
+            <div id="submitBtnContainer" class="mt-8 flex justify-center">
+                <button id="submitBtn" onclick="submitQuiz()"
+                    class="bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center btn-hover">
+                    <span id="submitText">Submit Quiz</span>
+                    <div id="submitSpinner" class="loading-spinner ml-2 hidden"></div>
+                </button>
+            </div>
+
+            <!-- Quiz Results Display -->
+            <div id="quizScoreContainer" class="hidden mt-8">
+                <div class="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-xl p-6 mb-6">
+                    <div class="stats-container" style="display: flex; flex-direction: column !important;gap: 38px;">
+
+                        <!-- my div -->
+                        <div class="w-full md:w-2/3" style="display: flex; justify-content: center;align-items: center; width: 100%;">
+                        <!-- Stats Container -->
+                        <div  style="width: 100%;">
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4 text-center md:text-left">Performance Summary</h3>
+                            <div class="progress-container mb-4">
+                                <div id="progressBar" class="progress-bar"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-green-600 text-center" id="correctCount">0</div>
+                                    <div class="text-sm text-gray-600 text-center">Correct Answers</div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-red-600 text-center" id="wrongCount">0</div>
+                                    <div class="text-sm text-gray-600 text-center">Wrong Answers</div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-indigo-600 text-center" id="scoreText">0/0</div>
+                                    <div class="text-sm text-gray-600 text-center">Score</div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-purple-600 text-center" id="percentageText">0%</div>
+                                    <div class="text-sm text-gray-600 text-center">Percentage</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        </div>
+
+                        <!-- Plotly Chart Container -->
+                        <div class="w-full md:w-1/3 flex flex-col items-center justify-center">
+                            <div id="resultsChart" class="w-full chart-container"></div>
+                            <div id="chartAnnotations" class="text-center mt-4"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Results -->
+                <div id="detailedResults" class="mt-6 space-y-4">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">Question Breakdown:</h4>
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+
+                <div id="resultActions" class="flex flex-wrap justify-center gap-4 mt-8">
+                    <button onclick="generatePDF()"
+                        class="bg-indigo-100 text-indigo-800 px-6 py-3 rounded-lg font-medium hover:bg-indigo-200 transition-all duration-300 flex items-center justify-center btn-hover">
+                        <span id="clientPdfText"><i class="fas fa-file-alt mr-2"></i>Download PDF</span>
+                    </button>
+                    <button onclick="resetQuiz()"
+                        class="bg-gray-100 text-gray-800 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300 btn-hover">
+                        <i class="fas fa-redo mr-2"></i>Generate New Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-center space-x-2 mb-8">
+                <i class="fas fa-brain text-indigo-400 text-2xl"></i>
+                <span class="text-xl font-bold">QuizMaster</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Product</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Features</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Company</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">About</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Careers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Support</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Help Center</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Contact Us</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Status</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+                <p>© 2023 QuizMaster. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables to store quiz data
+        let currentQuiz = null;
+        let userAnswers = {};
+        let selectedSubtopic = null;
+        
+        // Listen for topic input changes with debounce
+        let topicInputTimer;
+        document.getElementById('topic').addEventListener('input', function(e) {
+            clearTimeout(topicInputTimer);
+            const topic = e.target.value.trim();
+            
+            if (topic.length > 3) {  // Only trigger for meaningful input
+                topicInputTimer = setTimeout(() => {
+                    generateSubtopics(topic);
+                }, 800);  // 800ms debounce
+            } else {
+                // Hide subtopics container if input is too short
+                document.getElementById('subtopicsContainer').classList.add('hidden');
+                selectedSubtopic = null;
+            }
+        });
+
+        // Function to generate subtopics
+        function generateSubtopics(topic) {
+            const subtopicsContainer = document.getElementById('subtopicsContainer');
+            const subtopicsList = document.getElementById('subtopicsList');
+            const subtopicsLoading = document.getElementById('subtopicsLoading');
+            
+            // Show loading state
+            subtopicsLoading.classList.remove('hidden');
+            subtopicsList.innerHTML = '';
+            subtopicsContainer.classList.remove('hidden');
+            selectedSubtopic = null;
+            
+            // Make API call to generate subtopics
+            fetch('/generate-subtopics', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ topic: topic })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Hide loading state
+                subtopicsLoading.classList.add('hidden');
+                
+                // Display subtopics
+                if (data.subtopics && data.subtopics.length > 0) {
+                    subtopicsList.innerHTML = data.subtopics.map(subtopic => `
+                        <button type="button" 
+                                class="subtopic-btn p-3 rounded-lg border border-gray-200 hover:border-indigo-300 text-left transition-colors"
+                                data-subtopic="${subtopic}">
+                            ${subtopic}
+                        </button>
+                    `).join('');
+                    
+                    // Add click handlers to subtopic buttons
+                    document.querySelectorAll('.subtopic-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            // Remove selected state from all buttons
+                            document.querySelectorAll('.subtopic-btn').forEach(b => {
+                                b.classList.remove('bg-indigo-100', 'border-indigo-400');
+                            });
+                            
+                            // Add selected state to clicked button
+                            this.classList.add('bg-indigo-100', 'border-indigo-400');
+                            selectedSubtopic = this.dataset.subtopic;
+                        });
+                    });
+                } else {
+                    subtopicsList.innerHTML = '<p class="text-gray-500">No subtopics found for this topic</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error generating subtopics:', error);
+                subtopicsLoading.classList.add('hidden');
+                subtopicsList.innerHTML = `<p class="text-red-500">Error: ${error.error || 'Failed to generate subtopics'}</p>`;
+            });
+        }
+
+        // Handle form submission
+        document.getElementById('quizForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const topic = selectedSubtopic || document.getElementById('topic').value.trim();
+            const numQuestions = document.getElementById('num_questions').value;
+            const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+            
+            if (!topic) {
+                document.getElementById('errorMessage').textContent = 'Please enter or select a topic';
+                document.getElementById('errorDisplay').classList.remove('hidden');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('quizForm').classList.add('hidden');
+            document.getElementById('errorDisplay').classList.add('hidden');
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+            document.getElementById('btnText').textContent = 'Generating...';
+            
+            // Prepare request data
+            const requestData = {
+                topic: topic,
+                num_questions: parseInt(numQuestions),
+                difficulty: difficulty
+            };
+            
+            // Make API call to generate quiz
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Store quiz data
+                currentQuiz = data;
+                userAnswers = {};
+                
+                // Hide loading state
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('btnText').textContent = 'Generate Quiz';
+                
+                // Display quiz
+                displayQuiz(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Hide loading state
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('quizForm').classList.remove('hidden');
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('btnText').textContent = 'Generate Quiz';
+                
+                // Show error
+                document.getElementById('errorMessage').textContent = error.error || 'Failed to generate quiz. Please try again.';
+                document.getElementById('errorDisplay').classList.remove('hidden');
+            });
+        });
+        
+        // Display the generated quiz
+        function displayQuiz(quizData) {
+            const quizResults = document.getElementById('quizResults');
+            const questionsContainer = document.getElementById('questionsContainer');
+            
+            // Set quiz metadata
+            document.getElementById('quizTitle').textContent = quizData.title;
+            document.getElementById('questionCountText').textContent = `${quizData.total_questions} Questions`;
+            document.getElementById('difficultyLevelText').textContent = quizData.difficulty_level.charAt(0).toUpperCase() + quizData.difficulty_level.slice(1);
+            
+            // Clear previous questions
+            questionsContainer.innerHTML = '';
+            
+            // Add each question to the container
+            quizData.questions.forEach((question, qIndex) => {
+                const questionElement = document.createElement('div');
+                questionElement.className = 'question-card';
+                questionElement.dataset.questionIndex = qIndex;
+                
+                // Add question text
+                const questionText = document.createElement('h3');
+                questionText.className = 'text-lg font-semibold text-gray-800 mb-4';
+                questionText.textContent = `${qIndex + 1}. ${question.question_text}`;
+                questionElement.appendChild(questionText);
+                
+                // Add options container
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = 'space-y-3';
+                
+                // Add each option
+                question.options.forEach((option, oIndex) => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'flex items-start p-3 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors';
+                    
+                    const inputContainer = document.createElement('div');
+                    inputContainer.className = 'flex items-center h-5 mt-1';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'radio';
+                    input.name = `question-${qIndex}`;
+                    input.id = `question-${qIndex}-option-${oIndex}`;
+                    input.value = oIndex;
+                    input.className = 'custom-radio focus:ring-indigo-500 h-4 w-4 text-indigo-600';
+                    input.addEventListener('change', () => {
+                        userAnswers[qIndex] = oIndex;
+                        // Remove selected state from all options in this question
+                        const allOptions = document.querySelectorAll(`div[data-question-index="${qIndex}"] .flex.items-start`);
+                        allOptions.forEach(opt => opt.classList.remove('option-selected', 'bg-indigo-50'));
+                        // Add selected state to current option
+                        optionElement.classList.add('option-selected', 'bg-indigo-50');
+                    });
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `question-${qIndex}-option-${oIndex}`;
+                    label.className = 'ml-3 text-gray-700 cursor-pointer';
+                    label.textContent = option.text;
+                    
+                    inputContainer.appendChild(input);
+                    optionElement.appendChild(inputContainer);
+                    optionElement.appendChild(label);
+                    optionsContainer.appendChild(optionElement);
+                });
+                
+                questionElement.appendChild(optionsContainer);
+                questionsContainer.appendChild(questionElement);
+            });
+            
+            // Show quiz results section
+            quizResults.classList.remove('hidden');
+            document.getElementById('quizScoreContainer').classList.add('hidden');
+            document.getElementById('submitBtnContainer').classList.remove('hidden');
+            
+            // Scroll to quiz
+            quizResults.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Submit quiz for grading
+        function submitQuiz() {
+            // Validate all questions are answered
+            const unansweredQuestions = currentQuiz.questions.filter((_, index) => userAnswers[index] === undefined);
+            
+            if (unansweredQuestions.length > 0) {
+                alert(`Please answer all questions. You have ${unansweredQuestions.length} unanswered questions.`);
+                return;
+            }
+            
+            // Show loading spinner on submit button
+            document.getElementById('submitSpinner').classList.remove('hidden');
+            document.getElementById('submitText').textContent = 'Submitting...';
+            
+            // Prepare submission data
+            const submissionData = {
+                quiz_data: currentQuiz,
+                user_answers: userAnswers
+            };
+            
+            // Send to server for grading
+            fetch('/submit-quiz', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(submissionData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to submit quiz');
+                }
+                return response.json();
+            })
+            .then(results => {
+                // Hide submit button
+                document.getElementById('submitBtnContainer').classList.add('hidden');
+                
+                // Display results
+                displayResults(results);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to submit quiz. Please try again.');
+            })
+            .finally(() => {
+                document.getElementById('submitSpinner').classList.add('hidden');
+                document.getElementById('submitText').textContent = 'Submit Quiz';
+            });
+        }
+        
+        // Display quiz results
+        function displayResults(results) {
+            // Update score display
+            document.getElementById('correctCount').textContent = results.correct_answers.length;
+            document.getElementById('wrongCount').textContent = results.wrong_answers.length;
+            document.getElementById('scoreText').textContent = `${results.score}/${results.total_questions}`;
+            
+            const percentage = Math.round((results.score / results.total_questions) * 100);
+            document.getElementById('percentageText').textContent = `${percentage}%`;
+            
+            // Update progress bar
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+            
+            // Create results chart
+            createResultsChart(results);
+            
+            // Highlight correct and wrong answers
+            highlightAnswers(results);
+            
+            // Show detailed results
+            showDetailedResults(results);
+            
+            // Show results container
+            document.getElementById('quizScoreContainer').classList.remove('hidden');
+        }
+        
+        // Create results chart
+        function createResultsChart(results) {
+            const correctCount = results.correct_answers.length;
+            const wrongCount = results.wrong_answers.length;
+            
+            const data = [{
+                values: [correctCount, wrongCount],
+                labels: ['Correct', 'Wrong'],
+                marker: {
+                    colors: ['#10B981', '#EF4444']
+                },
+                type: 'pie',
+                hole: 0.4,
+                textinfo: 'label+percent',
+                insidetextorientation: 'radial',
+                hoverinfo: 'label+percent',
+                textposition: 'inside',
+                automargin: true
+            }];
+            
+            const layout = {
+                margin: { t: 0, b: 0, l: 0, r: 0 },
+                showlegend: false,
+                height: 200,
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('resultsChart', data, layout);
+        }
+        
+        // Highlight correct and wrong answers
+        function highlightAnswers(results) {
+            const questions = document.querySelectorAll('.question-card');
+            
+            questions.forEach((question, qIndex) => {
+                const questionData = currentQuiz.questions[qIndex];
+                const options = question.querySelectorAll('input[type="radio"]');
+                
+                // Find correct answer index
+                const correctIndex = questionData.options.findIndex(opt => opt.is_correct);
+                
+                options.forEach((option, oIndex) => {
+                    const optionElement = option.closest('.flex.items-start');
+                    
+                    if (oIndex === correctIndex) {
+                        optionElement.classList.add('correct-answer');
+                    } else if (userAnswers[qIndex] === oIndex && results.wrong_answers.includes(qIndex)) {
+                        optionElement.classList.add('wrong-answer');
+                    }
+                    
+                    // Disable all inputs
+                    option.disabled = true;
+                });
+            });
+        }
+        
+        // Show detailed results breakdown
+        function showDetailedResults(results) {
+            const detailedResults = document.getElementById('detailedResults');
+            
+            // Clear previous content (keep the heading)
+            while (detailedResults.children.length > 1) {
+                detailedResults.removeChild(detailedResults.lastChild);
+            }
+            
+            // Add each question's result
+            currentQuiz.questions.forEach((question, qIndex) => {
+                const isCorrect = results.correct_answers.includes(qIndex);
+                const correctIndex = question.options.findIndex(opt => opt.is_correct);
+                
+                const resultItem = document.createElement('div');
+                resultItem.className = `p-4 rounded-lg ${isCorrect ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100'}`;
+                
+                const questionText = document.createElement('p');
+                questionText.className = 'font-medium text-gray-800';
+                questionText.textContent = `${qIndex + 1}. ${question.question_text}`;
+                resultItem.appendChild(questionText);
+                
+                const resultText = document.createElement('p');
+                resultText.className = isCorrect ? 'text-green-600' : 'text-red-600';
+                resultText.innerHTML = isCorrect 
+                    ? '<i class="fas fa-check-circle mr-2"></i> You answered correctly!' 
+                    : `<i class="fas fa-times-circle mr-2"></i> Correct answer: ${question.options[correctIndex].text}`;
+                resultItem.appendChild(resultText);
+                
+                // Add explanation if available
+                if (question.explanation) {
+                    const explanation = document.createElement('div');
+                    explanation.className = 'mt-2 p-3 bg-white rounded-lg border border-gray-200';
+                    explanation.innerHTML = `<strong class="text-gray-700">Explanation:</strong> ${question.explanation}`;
+                    resultItem.appendChild(explanation);
+                }
+                
+                detailedResults.appendChild(resultItem);
+            });
+        }
+        
+        // Generate PDF of quiz
+        function generatePDF() {
+            // Show loading state on PDF button
+            const pdfButton = document.querySelector('#resultActions button:first-child');
+            const originalText = pdfButton.innerHTML;
+            pdfButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating PDF...';
+            pdfButton.disabled = true;
+            
+            // Send request to server to generate PDF
+            fetch('/download-quiz-pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(currentQuiz)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to generate PDF');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${currentQuiz.title.replace(/ /g, '_')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to generate PDF. Please try again.');
+            })
+            .finally(() => {
+                // Restore button state
+                pdfButton.innerHTML = originalText;
+                pdfButton.disabled = false;
+            });
+        }
+        
+        // Reset quiz form
+        function resetQuiz() {
+            // Clear quiz data
+            currentQuiz = null;
+            userAnswers = {};
+            selectedSubtopic = null;
+            
+            // Hide quiz results
+            document.getElementById('quizResults').classList.add('hidden');
+            
+            // Show form
+            document.getElementById('quizForm').classList.remove('hidden');
+            
+            // Hide subtopics container
+            document.getElementById('subtopicsContainer').classList.add('hidden');
+            
+            // Reset form values
+            document.getElementById('topic').value = '';
+            document.getElementById('num_questions').value = '5';
+            document.querySelector('input[name="difficulty"][value="easy"]').checked = true;
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

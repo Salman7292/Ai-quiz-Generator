@@ -1,0 +1,191 @@
+/* General Styles */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.myclass{
+    padding: 0px !important;
+}
+
+
+
+/* Sidebar */
+.sidebar {
+    background-color: #121063;
+    color: #fff;
+    width: 18%;
+    padding: 20px;
+    text-align: center;
+    position: fixed;
+    height: 100%;
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+}
+.sidebar .logo {
+margin-top: 20px;
+}
+
+.sidebar .logo img {
+    max-width: 136px;
+    margin-bottom: 20px;
+}
+
+.sidebar h2 {
+    margin-top: 20px;
+    font-size: 1.5em;
+}
+
+.github-button {
+    background-color: #ffcc00;
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+
+  margin-top: 50px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    position: end;
+}
+
+.github-button:hover {
+    background-color: #e6b800;
+}
+
+.sidebar .heart {
+    color: red;
+}
+
+/* Main Content */
+.main-content {
+    background-color: #0b3059;
+    color: #fff;
+    margin-left: 18%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Navbar */
+.navbar-inverse {
+    background-color: #0b3059;
+    border-color: transparent;
+    border-radius: 0;
+}
+
+.navbar-inverse .navbar-brand {
+    color: #ffcc00;
+}
+
+.navbar-inverse .navbar-brand:hover {
+    color: #e6b800;
+}
+
+.navbar-inverse .navbar-nav > li > a {
+    color: #fff;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+.navbar-inverse .navbar-nav > li > a:hover {
+    color: #f39c12;
+}
+
+.navbar-inverse .navbar-toggle {
+    border-color: #fff;
+}
+
+.navbar-inverse .icon-bar {
+    background-color: #fff;
+}
+
+.myclass2{
+    margin-right: -16px!important;
+    margin-left: 1px!important;
+}
+
+
+.myclass3 a {
+    background-color: #ff9800 !important;
+}
+
+.hero {
+    position: relative;
+    z-index: 1;
+    color: white;
+    padding: 20PX;
+    background: #121063a3;
+    border-radius: 10px;
+    PADDING-BOTTOM: 88PX;
+    margin-top: 30px;
+}
+
+.hero h1 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    color: #f89808;
+    font-weight: bolder;
+    text-align: center;
+}
+
+.hero p {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin: 0 auto;
+    max-width: 600px;
+    color: #ffffffca;
+    text-align: center;
+    
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .container-fluid {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 70%;
+        transform: translateX(-100%);
+        position: fixed;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    /* Navbar */
+    .navbar-inverse .navbar-collapse {
+        background-color: #0b3059;
+        position: absolute;
+        top: 50px;
+        left: 0;
+        width: 100%;
+        z-index: 999;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Mobile Hero Section */
+@media (max-width: 480px) {
+    .hero h1 {
+        font-size: 1.8em;
+    }
+
+    .hero p {
+        font-size: 0.9em;
+    }
+
+    .github-button {
+        padding: 8px 15px;
+        font-size: 0.9em;
+    }
+}

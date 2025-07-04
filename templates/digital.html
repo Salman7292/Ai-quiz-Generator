@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Exam | QuizMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(90deg, #4f46e5, #9333ea);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .text-lg {
+            font-size: 0.9rem !important;
+            line-height: 1.75rem !important;
+        }
+        
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-hover:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .loading-spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background-color: #e5e7eb;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4f46e5, #9333ea);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        
+        .option-selected {
+            background-color: #e0e7ff;
+            border-color: #818cf8;
+        }
+        
+        .correct-answer {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        
+        .wrong-answer {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+
+        .question-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .question-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .custom-radio {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            transition: all 0.2s ease;
+        }
+
+        .custom-radio:checked {
+            border-color: #4f46e5;
+            background-color: #4f46e5;
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
+            position: relative;
+        }
+
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+
+        .marks-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .marks-badge.full {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .marks-badge.partial {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .marks-badge.low {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        @media (max-width: 768px) {
+            .stats-container {
+                flex-direction: column !important;
+            }
+            
+            .quiz-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .quiz-meta {
+                margin-top: 1rem;
+                width: 100%;
+            }
+
+            .chart-container {
+                min-height: 250px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-blue-50 min-h-screen font-sans antialiased">
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="{{ url_for('Home') }}">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src="../static/images/logo.png" alt="QuizMaster Logo" class="w-full h-full object-contain">
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">QuizMaster</span>
+                    </div>
+                </a>
+
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="{{ url_for('Home') }}" class="nav-link text-gray-600 hover:text-indigo-600">Home</a>
+                    <a href="{{ url_for('About') }}" class="nav-link text-gray-600 hover:text-indigo-600">About</a>
+                    {% if 'username' in session %}
+                    <a href="{{ url_for('index') }}" class="nav-link text-gray-600 hover:text-indigo-600">Quiz Generating</a>
+                    <a href="{{ url_for('digital_exam') }}" class="nav-link text-gray-600 hover:text-indigo-600">Digital Exam</a>
+                    <a href="{{ url_for('dashboard') }}" class="nav-link text-gray-600 hover:text-indigo-600">Dashboard</a>
+                    <a href="{{ url_for('logout') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors btn-hover">
+                        Logout
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link text-gray-600 hover:text-indigo-600">Login</a>
+                    <a href="{{ url_for('signup') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors btn-hover">
+                        Sign Up
+                    </a>
+                    {% endif %}
+                </div>
+                <button class="md:hidden text-gray-600">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="max-w-4xl mx-auto px-4 pt-6">
+        {% for category, message in messages %}
+        <div class="p-4 mb-4 rounded-lg {% if category == 'success' %}bg-green-100 text-green-800{% elif category == 'danger' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="container mx-auto px-4 py-12">
+        <!-- Header -->
+        <header class="text-center mb-12 animate__animated animate__fadeIn">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                <span class="gradient-text">Digital Exam Generator</span>
+            </h1>
+            <p class="text-lg text-indigo-600">Create custom exams with MCQs and descriptive questions</p>
+        </header>
+
+        <!-- Exam Form -->
+        <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 mb-12 card-hover">
+            <form id="examForm" class="space-y-6">
+                <div>
+                    <label for="topic" class="block text-lg font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lightbulb text-indigo-500 mr-2"></i>
+                        Exam Topic
+                    </label>
+                    <input type="text" id="topic" name="topic" required
+                        class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300"
+                        placeholder="e.g. Computer Science, History, Mathematics">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="mcq_count" class="block text-lg font-medium text-gray-700 mb-2">
+                            <i class="fas fa-list-ol text-indigo-500 mr-2"></i>
+                            Number of MCQs
+                        </label>
+                        <input type="number" id="mcq_count" name="mcq_count" min="0" max="20" value="5" required
+                            class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300">
+                    </div>
+
+                    <div>
+                        <label for="descriptive_count" class="block text-lg font-medium text-gray-700 mb-2">
+                            <i class="fas fa-align-left text-indigo-500 mr-2"></i>
+                            Number of Descriptive Questions
+                        </label>
+                        <input type="number" id="descriptive_count" name="descriptive_count" min="0" max="20" value="5" required
+                            class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-lg font-medium text-gray-700 mb-2">
+                        <i class="fas fa-chart-line text-indigo-500 mr-2"></i>
+                        Difficulty Level
+                    </label>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="difficulty" value="easy"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500" checked>
+                            <span class="ml-2 text-gray-700">Easy</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="difficulty" value="medium"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Medium</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="difficulty" value="hard"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Hard</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-lg font-medium text-gray-700 mb-2">
+                        <i class="fas fa-paint-brush text-indigo-500 mr-2"></i>
+                        Paper Style
+                    </label>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="paper_style" value="simple"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500" checked>
+                            <span class="ml-2 text-gray-700">Simple</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="paper_style" value="balanced"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Balanced</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="paper_style" value="technical"
+                                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Technical</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" id="generateBtn"
+                    class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-lg font-bold text-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center btn-hover">
+                    <span id="btnText">Generate Exam</span>
+                    <div id="loadingSpinner" class="loading-spinner ml-2 hidden"></div>
+                </button>
+            </form>
+        </div>
+
+        <!-- Error Display -->
+        <div id="errorDisplay" class="max-w-2xl mx-auto bg-red-50 border-l-4 border-red-500 p-4 rounded-lg animate__animated animate__shakeX hidden mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500 text-xl mt-1"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Error generating exam</h3>
+                    <p id="errorMessage" class="text-sm text-red-700 mt-1"></p>
+                    <div class="mt-2">
+                        <button onclick="document.getElementById('errorDisplay').classList.add('hidden')"
+                            class="text-sm text-red-700 hover:text-red-600 font-medium">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submission Error Display -->
+        <div id="submitErrorDisplay" class="max-w-2xl mx-auto bg-red-50 border-l-4 border-red-500 p-4 rounded-lg animate__animated animate__shakeX hidden mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500 text-xl mt-1"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Submission Error</h3>
+                    <p id="submitErrorMessage" class="text-sm text-red-700 mt-1">Failed to submit exam. Please try again.</p>
+                    <div class="mt-2">
+                        <button onclick="document.getElementById('submitErrorDisplay').classList.add('hidden')"
+                            class="text-sm text-red-700 hover:text-red-600 font-medium">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 mb-12 hidden card-hover">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-lg text-indigo-700 font-medium">Generating your exam...</p>
+                <p class="text-gray-500 text-center">Our AI is crafting personalized questions for you. This may take a moment.</p>
+            </div>
+        </div>
+
+        <!-- Exam Results -->
+        <div id="examResults" class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8 card-hover hidden">
+            <div class="text-center mb-8">
+                <h2 id="examTitle" class="text-3xl font-bold text-gray-900 mb-2"></h2>
+                <div class="flex flex-wrap justify-center gap-4 mt-4">
+                    <span id="questionCount" class="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full font-medium">
+                        <i class="fas fa-question-circle mr-2"></i>
+                        <span id="questionCountText"></span>
+                    </span>
+                    <span id="mcqCount" class="bg-purple-100 text-purple-800 px-4 py-2 rounded-full font-medium">
+                        <i class="fas fa-list-ol mr-2"></i>
+                        <span id="mcqCountText"></span>
+                    </span>
+                    <span id="descriptiveCount" class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full font-medium">
+                        <i class="fas fa-align-left mr-2"></i>
+                        <span id="descriptiveCountText"></span>
+                    </span>
+                    <span id="difficultyLevel" class="bg-green-100 text-green-800 px-4 py-2 rounded-full font-medium">
+                        <i class="fas fa-bolt mr-2"></i>
+                        <span id="difficultyLevelText"></span>
+                    </span>
+                </div>
+            </div>
+
+            <div id="questionsContainer" class="space-y-6">
+                <!-- Questions will be inserted here dynamically -->
+            </div>
+
+            <div id="submitBtnContainer" class="mt-8 flex justify-center">
+                <button id="submitBtn" onclick="submitExam()"
+                    class="bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center btn-hover">
+                    <span id="submitText">Submit Exam</span>
+                    <div id="submitSpinner" class="loading-spinner ml-2 hidden"></div>
+                </button>
+            </div>
+
+            <!-- Exam Results Display -->
+            <div id="examScoreContainer" class="hidden mt-8">
+                <div class="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-xl p-6 mb-6">
+                    <div class="flex flex-col gap-8" style="
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+">
+                        <!-- Score Summary -->
+                        <div class="w-full md:w-1/3" style="width: 100% !important;">
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4">Score Summary</h3>
+                            <div class="progress-container mb-4">
+                                <div id="progressBar" class="progress-bar"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-indigo-600 text-center" id="scoreText">0/0</div>
+                                    <div class="text-sm text-gray-600 text-center">Marks Obtained</div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-purple-600 text-center" id="percentageText">0%</div>
+                                    <div class="text-sm text-gray-600 text-center">Percentage</div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-green-600 text-center" id="correctCount">0</div>
+                                    <div class="text-sm text-gray-600 text-center">Correct Answers</div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <div class="text-3xl font-bold text-blue-600 text-center" id="gradeText">-</div>
+                                    <div class="text-sm text-gray-600 text-center">Grade</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts -->
+                        <div class="w-full md:w-2/3 space-y-6" style="width: 100% !important;">
+                            <div class="bg-white rounded-lg shadow-sm p-4">
+                                <div class="chart-container">
+                                    <canvas id="topicChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-white rounded-lg shadow-sm p-4">
+                                    <div class="chart-container">
+                                        <canvas id="difficultyChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="bg-white rounded-lg shadow-sm p-4">
+                                    <div class="chart-container">
+                                        <canvas id="marksChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Results -->
+                <div id="detailedResults" class="mt-6 space-y-4">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">Question-wise Feedback:</h4>
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+
+                <div id="resultActions" class="flex flex-wrap justify-center gap-4 mt-8">
+                    <button onclick="resetExam()"
+                        class="bg-gray-100 text-gray-800 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300 btn-hover">
+                        <i class="fas fa-redo mr-2"></i>Generate New Exam
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-center space-x-2 mb-8">
+                <i class="fas fa-brain text-indigo-400 text-2xl"></i>
+                <span class="text-xl font-bold">QuizMaster</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Product</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Features</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Company</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">About</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Careers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Support</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Help Center</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Contact Us</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Status</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+                <p>© 2023 QuizMaster. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables to store exam data and chart instances
+        let currentExam = null;
+        let userAnswers = {};
+        let topicChart = null;
+        let difficultyChart = null;
+        let marksChart = null;
+
+        // Handle form submission
+        document.getElementById('examForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const topic = document.getElementById('topic').value.trim();
+            const mcq_count = document.getElementById('mcq_count').value;
+            const descriptive_count = document.getElementById('descriptive_count').value;
+            const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+            const paper_style = document.querySelector('input[name="paper_style"]:checked').value;
+            
+            if (!topic) {
+                document.getElementById('errorMessage').textContent = 'Please enter a topic';
+                document.getElementById('errorDisplay').classList.remove('hidden');
+                return;
+            }
+            
+            if (parseInt(mcq_count) + parseInt(descriptive_count) < 1) {
+                document.getElementById('errorMessage').textContent = 'Must have at least one question';
+                document.getElementById('errorDisplay').classList.remove('hidden');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('examForm').classList.add('hidden');
+            document.getElementById('errorDisplay').classList.add('hidden');
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+            document.getElementById('btnText').textContent = 'Generating...';
+            
+            // Prepare request data
+            const requestData = {
+                topic: topic,
+                mcq_count: parseInt(mcq_count),
+                descriptive_count: parseInt(descriptive_count),
+                difficulty: difficulty,
+                paper_style: paper_style
+            };
+            
+            // Make API call to generate exam
+            fetch('/digital-exam/generate-exam', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Store exam data
+                currentExam = data;
+                userAnswers = {};
+                
+                // Hide loading state
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('btnText').textContent = 'Generate Exam';
+                
+                // Display exam
+                displayExam(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Hide loading state
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('examForm').classList.remove('hidden');
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('btnText').textContent = 'Generate Exam';
+                
+                // Show error
+                document.getElementById('errorMessage').textContent = error.error || 'Failed to generate exam. Please try again.';
+                document.getElementById('errorDisplay').classList.remove('hidden');
+            });
+        });
+        
+        // Display the generated exam
+        function displayExam(examData) {
+            const examResults = document.getElementById('examResults');
+            const questionsContainer = document.getElementById('questionsContainer');
+            
+            // Set exam metadata
+            document.getElementById('examTitle').textContent = examData.title;
+            document.getElementById('questionCountText').textContent = `${examData.total_questions} Questions`;
+            document.getElementById('mcqCountText').textContent = `${examData.mcq_count} MCQs`;
+            document.getElementById('descriptiveCountText').textContent = `${examData.descriptive_count} Descriptive`;
+            document.getElementById('difficultyLevelText').textContent = examData.difficulty_level.charAt(0).toUpperCase() + examData.difficulty_level.slice(1);
+            
+            // Clear previous questions
+            questionsContainer.innerHTML = '';
+            
+            // Add each question to the container
+            examData.questions.forEach((question, qIndex) => {
+                const questionElement = document.createElement('div');
+                questionElement.className = 'question-card';
+                questionElement.dataset.questionIndex = qIndex;
+                
+                // Add question header
+                const questionHeader = document.createElement('div');
+                questionHeader.className = 'flex justify-between items-center mb-3';
+                
+                const questionNumber = document.createElement('span');
+                questionNumber.className = 'font-medium text-gray-700';
+                questionNumber.textContent = `Question ${qIndex + 1}`;
+                
+                const questionMarks = document.createElement('span');
+                questionMarks.className = 'text-sm font-medium bg-indigo-100 text-indigo-800 px-2 py-1 rounded';
+                questionMarks.textContent = `${question.max_marks} marks`;
+                
+                questionHeader.appendChild(questionNumber);
+                questionHeader.appendChild(questionMarks);
+                questionElement.appendChild(questionHeader);
+                
+                // Add question text
+                const questionText = document.createElement('p');
+                questionText.className = 'text-lg font-semibold text-gray-800 mb-4';
+                questionText.textContent = question.question_text;
+                questionElement.appendChild(questionText);
+                
+                // Add options or answer box based on question type
+                if (question.question_type === 'mcq') {
+                    const optionsContainer = document.createElement('div');
+                    optionsContainer.className = 'space-y-3';
+                    
+                    // Add each option
+                    question.options.forEach((option, oIndex) => {
+                        const optionElement = document.createElement('div');
+                        optionElement.className = 'flex items-start p-3 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors';
+                        
+                        const inputContainer = document.createElement('div');
+                        inputContainer.className = 'flex items-center h-5 mt-1';
+                        
+                        const input = document.createElement('input');
+                        input.type = 'radio';
+                        input.name = `question-${qIndex}`;
+                        input.id = `question-${qIndex}-option-${oIndex}`;
+                        input.value = oIndex;
+                        input.className = 'custom-radio focus:ring-indigo-500 h-4 w-4 text-indigo-600';
+                        input.addEventListener('change', () => {
+                            userAnswers[qIndex] = oIndex;
+                            // Remove selected state from all options in this question
+                            const allOptions = document.querySelectorAll(`div[data-question-index="${qIndex}"] .flex.items-start`);
+                            allOptions.forEach(opt => opt.classList.remove('option-selected', 'bg-indigo-50'));
+                            // Add selected state to current option
+                            optionElement.classList.add('option-selected', 'bg-indigo-50');
+                        });
+                        
+                        const label = document.createElement('label');
+                        label.htmlFor = `question-${qIndex}-option-${oIndex}`;
+                        label.className = 'ml-3 text-gray-700 cursor-pointer';
+                        label.textContent = option;
+                        
+                        inputContainer.appendChild(input);
+                        optionElement.appendChild(inputContainer);
+                        optionElement.appendChild(label);
+                        optionsContainer.appendChild(optionElement);
+                    });
+                    
+                    questionElement.appendChild(optionsContainer);
+                } else {
+                    // Descriptive question - add textarea
+                    const answerBox = document.createElement('textarea');
+                    answerBox.className = 'w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300';
+                    answerBox.placeholder = 'Type your answer here...';
+                    answerBox.addEventListener('input', (e) => {
+                        userAnswers[qIndex] = e.target.value;
+                    });
+                    questionElement.appendChild(answerBox);
+                }
+                
+                questionsContainer.appendChild(questionElement);
+            });
+            
+            // Show exam results section
+            examResults.classList.remove('hidden');
+            document.getElementById('examScoreContainer').classList.add('hidden');
+            document.getElementById('submitBtnContainer').classList.remove('hidden');
+            
+            // Scroll to exam
+            examResults.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Submit exam for evaluation
+        function submitExam() {
+            // Validate all questions are answered
+            const unansweredQuestions = currentExam.questions.filter((_, index) => userAnswers[index] === undefined);
+            
+            if (unansweredQuestions.length > 0) {
+                document.getElementById('submitErrorMessage').textContent = 
+                    `Please answer all questions. You have ${unansweredQuestions.length} unanswered questions.`;
+                document.getElementById('submitErrorDisplay').classList.remove('hidden');
+                document.getElementById('submitErrorDisplay').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            
+            // Show loading spinner on submit button
+            document.getElementById('submitSpinner').classList.remove('hidden');
+            document.getElementById('submitText').textContent = 'Submitting...';
+            // Hide any previous error
+            document.getElementById('submitErrorDisplay').classList.add('hidden');
+            
+            // Prepare submission data
+            const submissionData = {
+                exam_data: currentExam,
+                user_answers: userAnswers
+            };
+            
+            // Send to server for evaluation
+            fetch('/digital-exam/evaluate-exam', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(submissionData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { 
+                        throw new Error(err.error || 'Failed to submit exam');
+                    });
+                }
+                return response.json();
+            })
+            .then(results => {
+                // Hide submit button
+                document.getElementById('submitBtnContainer').classList.add('hidden');
+                
+                // Display results
+                displayResults(results);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Show the error display
+                document.getElementById('submitErrorMessage').textContent = 
+                    error.message || 'Failed to submit exam. Please try again.';
+                document.getElementById('submitErrorDisplay').classList.remove('hidden');
+                // Scroll to the error message
+                document.getElementById('submitErrorDisplay').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            })
+            .finally(() => {
+                document.getElementById('submitSpinner').classList.add('hidden');
+                document.getElementById('submitText').textContent = 'Submit Exam';
+            });
+        }
+        
+        // Display exam results
+        function displayResults(results) {
+            // Update score display
+            const percentage = Math.round((results.score / results.total_marks) * 100);
+            document.getElementById('scoreText').textContent = `${results.score}/${results.total_marks}`;
+            document.getElementById('percentageText').textContent = `${percentage}%`;
+            
+            // Calculate grade
+            let grade = 'F';
+            if (percentage >= 90) grade = 'A+';
+            else if (percentage >= 80) grade = 'A';
+            else if (percentage >= 70) grade = 'B';
+            else if (percentage >= 60) grade = 'C';
+            else if (percentage >= 50) grade = 'D';
+            document.getElementById('gradeText').textContent = grade;
+            
+            // Count correct answers
+            const correctCount = results.question_feedback.filter(f => 
+                f.marks >= currentExam.questions[f.question_index].max_marks * 0.8
+            ).length;
+            document.getElementById('correctCount').textContent = correctCount;
+            
+            // Update progress bar
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+            
+            // Render charts
+            renderCharts(results);
+            
+            // Highlight answers and show feedback
+            highlightAnswers(results);
+            
+            // Show detailed results
+            showDetailedResults(results);
+            
+            // Show results container
+            document.getElementById('examScoreContainer').classList.remove('hidden');
+        }
+        
+        // Render visualization charts with Chart.js
+        function renderCharts(results) {
+            // Destroy existing charts if they exist
+            if (topicChart) {
+                topicChart.destroy();
+            }
+            if (difficultyChart) {
+                difficultyChart.destroy();
+            }
+            if (marksChart) {
+                marksChart.destroy();
+            }
+
+            // Topic Performance Chart
+            const topicCtx = document.getElementById('topicChart').getContext('2d');
+            topicChart = new Chart(topicCtx, results.topic_chart);
+            
+            // Difficulty Performance Chart
+            const difficultyCtx = document.getElementById('difficultyChart').getContext('2d');
+            difficultyChart = new Chart(difficultyCtx, results.difficulty_chart);
+            
+            // Marks Distribution Chart
+            if (results.marks_chart) {
+                const marksCtx = document.getElementById('marksChart').getContext('2d');
+                marksChart = new Chart(marksCtx, results.marks_chart);
+            }
+        }
+        
+        // Highlight correct and wrong answers
+        function highlightAnswers(results) {
+            const questions = document.querySelectorAll('.question-card');
+            
+            questions.forEach((question, qIndex) => {
+                const questionData = currentExam.questions[qIndex];
+                
+                if (questionData.question_type === 'mcq') {
+                    const options = question.querySelectorAll('input[type="radio"]');
+                    
+                    // Find correct answer index
+                    const correctIndex = parseInt(questionData.correct_answer);
+                    const userAnswer = userAnswers[qIndex];
+                    
+                    options.forEach((option, oIndex) => {
+                        const optionElement = option.closest('.flex.items-start');
+                        
+                        if (oIndex === correctIndex) {
+                            optionElement.classList.add('correct-answer');
+                        } else if (userAnswer === oIndex && userAnswer !== correctIndex) {
+                            optionElement.classList.add('wrong-answer');
+                        }
+                        
+                        // Disable all inputs
+                        option.disabled = true;
+                    });
+                } else {
+                    // For descriptive questions, disable the textarea
+                    const textarea = question.querySelector('textarea');
+                    if (textarea) {
+                        textarea.disabled = true;
+                    }
+                }
+            });
+        }
+        
+        // Show detailed results breakdown
+        function showDetailedResults(results) {
+            const detailedResults = document.getElementById('detailedResults');
+            
+            // Clear previous content (keep the heading)
+            while (detailedResults.children.length > 1) {
+                detailedResults.removeChild(detailedResults.lastChild);
+            }
+            
+            // Add feedback for each question
+            results.question_feedback.forEach((feedback, index) => {
+                const question = currentExam.questions[feedback.question_index];
+                
+                const resultItem = document.createElement('div');
+                resultItem.className = 'question-card';
+                
+                // Question header
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-center mb-3';
+                
+                const questionTitle = document.createElement('h4');
+                questionTitle.className = 'font-medium text-gray-800';
+                questionTitle.textContent = `Question ${feedback.question_index + 1}: ${question.question_text}`;
+                
+                // Marks badge
+                const marksBadge = document.createElement('span');
+                marksBadge.className = 'marks-badge ';
+                if (feedback.marks >= question.max_marks * 0.8) {
+                    marksBadge.classList.add('full');
+                } else if (feedback.marks >= question.max_marks * 0.5) {
+                    marksBadge.classList.add('partial');
+                } else {
+                    marksBadge.classList.add('low');
+                }
+                marksBadge.textContent = `${feedback.marks}/${question.max_marks}`;
+                
+                header.appendChild(questionTitle);
+                header.appendChild(marksBadge);
+                resultItem.appendChild(header);
+                
+                // Feedback
+                const feedbackText = document.createElement('div');
+                feedbackText.className = 'bg-blue-50 p-4 rounded-lg mb-3';
+                feedbackText.innerHTML = `<strong class="text-blue-700">Feedback:</strong> ${feedback.feedback}`;
+                resultItem.appendChild(feedbackText);
+                
+                // Model answer (for descriptive questions)
+                if (question.question_type === 'descriptive' && feedback.model_answer) {
+                    const modelAnswer = document.createElement('div');
+                    modelAnswer.className = 'bg-green-50 p-4 rounded-lg';
+                    modelAnswer.innerHTML = `<strong class="text-green-700">Model Answer:</strong> ${feedback.model_answer}`;
+                    resultItem.appendChild(modelAnswer);
+                }
+                
+                detailedResults.appendChild(resultItem);
+            });
+        }
+        
+        // Reset exam form
+        function resetExam() {
+            // Clear exam data
+            currentExam = null;
+            userAnswers = {};
+            
+            // Destroy any existing charts
+            if (topicChart) {
+                topicChart.destroy();
+                topicChart = null;
+            }
+            if (difficultyChart) {
+                difficultyChart.destroy();
+                difficultyChart = null;
+            }
+            if (marksChart) {
+                marksChart.destroy();
+                marksChart = null;
+            }
+            
+            // Hide exam results
+            document.getElementById('examResults').classList.add('hidden');
+            
+            // Show form
+            document.getElementById('examForm').classList.remove('hidden');
+            
+            // Reset form values
+            document.getElementById('topic').value = '';
+            document.getElementById('mcq_count').value = '5';
+            document.getElementById('descriptive_count').value = '5';
+            document.querySelector('input[name="difficulty"][value="easy"]').checked = true;
+            document.querySelector('input[name="paper_style"][value="simple"]').checked = true;
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

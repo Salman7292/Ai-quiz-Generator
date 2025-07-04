@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Result Details | QuizMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background-color: #f3f4f6;
+            transform: translateX(4px);
+        }
+        .sidebar-item.active {
+            background-color: #eef2ff;
+            border-left: 4px solid #4f46e5;
+        }
+        .question-correct {
+            border-left: 4px solid #10b981;
+            background-color: #f0fdf4;
+        }
+        .question-partial {
+            border-left: 4px solid #f59e0b;
+            background-color: #fffbeb;
+        }
+        .question-wrong {
+            border-left: 4px solid #ef4444;
+            background-color: #fef2f2;
+        }
+        .option-selected {
+            background-color: #dbeafe;
+            font-weight: 500;
+        }
+        .option-correct {
+            background-color: #dcfce7;
+            font-weight: 500;
+        }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="sidebar hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64 border-r border-gray-200 bg-white">
+                <a href="{{ url_for('Home') }}">
+                    <div class="flex items-center h-16 px-4 border-b border-gray-200">
+                        <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src="../static/images/logo.png" alt="QuizMaster Logo" class="w-full h-full object-contain">
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">QuizMaster</span>
+                    </div>
+                </a>
+
+                <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+                    <nav class="flex-1 space-y-2">
+                        <a href="{{ url_for('dashboard') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-home text-gray-500 mr-3"></i>
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('digital_exam') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-plus-circle text-gray-500 mr-3"></i>
+                            Create Exam
+                        </a>
+                        <a href="{{ url_for('load_exam') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-history text-gray-500 mr-3"></i>
+                            Load Exam
+                        </a>
+                        <a href="{{ url_for('my_exams') }}"
+                            class="sidebar-item flex items-center px-4 py-3 text-sm font-medium text-gray-900 bg-blue-50 rounded-lg">
+                            <i class="fas fa-graduation-cap text-blue-500 mr-3"></i>
+                            My Exams
+                        </a>
+                    </nav>
+                </div>
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex items-center">
+                        <img class="h-10 w-10 rounded-full" src="../static/images/profile.png" alt="User avatar">
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-900">{{ session['username'] }}</p>
+                            <p class="text-xs text-gray-500">Member since 2025</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}"
+                        class="mt-4 w-full flex items-center justify-center px-4 py-2 text-sm text-gray-600 hover:text-red-600 rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Sign out
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 overflow-auto">
+            <!-- Top navigation -->
+            <nav class="bg-white shadow-sm">
+                <div class="px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center h-16">
+                        <div class="flex items-center">
+                            <button class="md:hidden text-gray-500 mr-4">
+                                <i class="fas fa-bars text-xl"></i>
+                            </button>
+                            <h1 class="text-xl font-semibold text-gray-900">Exam Result Details</h1>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <button class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-bell text-xl"></i>
+                            </button>
+                            <div class="flex items-center">
+                                <img class="h-8 w-8 rounded-full" src="../static/images/profile.png" alt="User avatar">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main content area -->
+            <main class="p-4 sm:p-6 lg:p-8">
+                <!-- Result Summary -->
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">{{ result.title }}</h1>
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <span class="text-sm text-gray-600">
+                                    <i class="fas fa-user mr-1"></i> {{ result.username }}
+                                </span>
+                                <span class="text-sm text-gray-600">
+                                    <i class="far fa-calendar mr-1"></i> {{ result.completed_at.strftime('%b %d, %Y %H:%M') }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-4 md:mt-0">
+                            <div class="flex items-center">
+                                <div class="relative w-16 h-16 mr-4">
+                                    <svg class="w-full h-full" viewBox="0 0 36 36">
+                                        <path
+                                            d="M18 2.0845
+                                            a 15.9155 15.9155 0 0 1 0 31.831
+                                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                                            fill="none"
+                                            stroke="#e6e6e6"
+                                            stroke-width="3"
+                                        />
+                                        <path
+                                            d="M18 2.0845
+                                            a 15.9155 15.9155 0 0 1 0 31.831
+                                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                                            fill="none"
+                                            stroke="#4f46e5"
+                                            stroke-width="3"
+                                            stroke-dasharray="{{ result.percentage }}, 100"
+                                        />
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-sm font-bold text-gray-700">{{ result.percentage }}%</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Score</p>
+                                    <p class="text-2xl font-bold text-gray-900">
+                                        {{ result.score }} / {{ result.total_marks }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Questions and Answers -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+                    <div class="px-6 py-5 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">Question Breakdown</h2>
+                    </div>
+                    
+                    <div class="divide-y divide-gray-200">
+                        {% for answer in answers %}
+                        {% set question_class = 'question-correct' if answer.marks_awarded == answer.max_marks 
+                            else 'question-partial' if answer.marks_awarded > 0 
+                            else 'question-wrong' %}
+                        <div class="p-6 {{ question_class }}">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                                        <span class="mr-2">Q{{ loop.index }}.</span>
+                                        {{ answer.question_text }}
+                                    </h3>
+                                    <div class="mt-1 flex items-center">
+                                        <span class="text-sm font-medium {% if answer.marks_awarded == answer.max_marks %}text-green-600{% elif answer.marks_awarded > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                                            {{ answer.marks_awarded }} / {{ answer.max_marks }} marks
+                                        </span>
+                                        <span class="mx-2 text-gray-400">•</span>
+                                        <span class="text-sm text-gray-600">
+                                            {{ answer.question_type|upper }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if answer.question_type == 'mcq' %}
+                                <div class="mt-4 space-y-2">
+                                    {% for option in answer.options %}
+                                    <div class="p-3 rounded-lg border border-gray-200 
+                                        {% if loop.index0 == answer.selected_option %}option-selected{% endif %}
+                                        {% if loop.index0|string == answer.correct_answer %}option-correct{% endif %}">
+                                        <div class="flex items-start">
+                                            <span class="mr-3 mt-1 text-gray-600">{{ loop.index|letter }}.</span>
+                                            <div class="flex-1">
+                                                <p class="text-gray-800">{{ option }}</p>
+                                                {% if loop.index0 == answer.selected_option %}
+                                                <p class="mt-1 text-sm {% if answer.selected_option|string == answer.correct_answer %}text-green-600{% else %}text-red-600{% endif %}">
+                                                    <i class="fas fa-arrow-right mr-1"></i>
+                                                    Your answer
+                                                    {% if answer.selected_option|string == answer.correct_answer %}
+                                                    (Correct)
+                                                    {% else %}
+                                                    (Incorrect)
+                                                    {% endif %}
+                                                </p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="mt-4">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Your Answer:</h4>
+                                    <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <p class="text-gray-800">{{ answer.answer_text or "No answer provided" }}</p>
+                                    </div>
+                                    
+                                    {% if answer.feedback %}
+                                    <div class="mt-4">
+                                        <h4 class="text-sm font-medium text-gray-700 mb-2">Feedback:</h4>
+                                        <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                            <p class="text-gray-800">{{ answer.feedback }}</p>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Actions Footer -->
+                <div class="flex justify-between">
+                    <a href="{{ url_for('exam_results', exam_id=result.exam_id) }}"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to Results
+                    </a>
+                    {% if result.created_by == session['user_id'] %}
+                    <a href="{{ url_for('view_exam', exam_id=result.exam_id) }}"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                        <i class="fas fa-eye mr-2"></i> View Exam
+                    </a>
+                    {% endif %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Convert number to letter (1=A, 2=B, etc.)
+        Number.prototype.letter = function() {
+            return String.fromCharCode(64 + this);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Quiz | QuizMaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .difficulty-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .difficulty-easy {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .difficulty-medium {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        .difficulty-hard {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .option-correct {
+            border-left: 4px solid #10b981;
+            background-color: #f0fdf4;
+        }
+        .quiz-card {
+            transition: all 0.3s ease;
+        }
+        .quiz-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64 border-r border-gray-200 bg-white">
+                <a href="{{ url_for('Home') }}">
+                    <div class="flex items-center h-16 px-4 border-b border-gray-200">
+                        <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src="../static/images/logo.png" alt="QuizMaster Logo"
+                                class="w-full h-full object-contain">
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">QuizMaster</span>
+                    </div>
+                </a>
+
+                <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+                    <nav class="flex-1 space-y-2">
+                        <a href="{{ url_for('dashboard') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-home text-gray-500 mr-3"></i>
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('index') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-plus-circle text-gray-500 mr-3"></i>
+                            Create Quiz
+                        </a>
+                        <a href="{{ url_for('load_quiz') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg">
+                            <i class="fas fa-history text-gray-500 mr-3"></i>
+                            Load Quiz
+                        </a>
+                        <a href="{{ url_for('my_quizzes') }}"
+                            class="flex items-center px-4 py-3 text-sm font-medium text-gray-900 rounded-lg">
+                            <i class="fas fa-graduation-cap text-gray-500 mr-3"></i>
+                            My Quizzes
+                        </a>
+                    </nav>
+                </div>
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex items-center">
+                        <img class="h-10 w-10 rounded-full" src="../static/images/profile.png"
+                            alt="User avatar">
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-900">{{ session['username'] }}</p>
+                            <p class="text-xs text-gray-500">Member since 2025</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}"
+                        class="mt-4 w-full flex items-center justify-center px-4 py-2 text-sm text-gray-600 hover:text-red-600 rounded-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Sign out
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 overflow-auto">
+            <!-- Top navigation -->
+            <nav class="bg-white shadow-sm">
+                <div class="px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center h-16">
+                        <div class="flex items-center">
+                            <button class="md:hidden text-gray-500 mr-4">
+                                <i class="fas fa-bars text-xl"></i>
+                            </button>
+                            <h1 class="text-xl font-semibold text-gray-900">View Quiz</h1>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <button class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-bell text-xl"></i>
+                            </button>
+                            <div class="flex items-center">
+                                <img class="h-8 w-8 rounded-full" src="../static/images/profile.png"
+                                    alt="User avatar">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main content area -->
+            <main class="p-4 sm:p-6 lg:p-8">
+                <!-- Quiz Header -->
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">{{ quiz.title }}</h1>
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <span class="difficulty-{{ quiz.difficulty_level }} difficulty-badge">
+                                    {{ quiz.difficulty_level }}
+                                </span>
+                                <span class="text-sm text-gray-600">
+                                    <i class="fas fa-book mr-1"></i> {{ quiz.total_questions }} questions
+                                </span>
+                                <span class="text-sm text-gray-600">
+                                    <i class="fas fa-layer-group mr-1"></i> {{ quiz.topic }}
+                                </span>
+                                <span class="text-sm text-gray-600">
+                                    <i class="far fa-calendar mr-1"></i> {{ quiz.created_at.strftime('%b %d, %Y') }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-4 md:mt-0 flex space-x-2">
+                            <a href="{{ url_for('index') }}?load_quiz={{ quiz.id }}"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                <i class="fas fa-redo mr-2"></i> Retake Quiz
+                            </a>
+                            <button onclick="downloadQuizPDF()"
+                                class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                <i class="fas fa-download mr-2"></i> Download PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quiz Questions -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-5 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">Questions</h2>
+                    </div>
+                    
+                    <div class="divide-y divide-gray-200">
+                        {% for question in quiz.questions %}
+                        <div class="p-6 quiz-card">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                                        <span class="mr-2">Q{{ loop.index }}.</span>
+                                        {{ question.question_text }}
+                                    </h3>
+                                    <div class="mt-2 flex items-center">
+                                        <span class="difficulty-{{ question.difficulty }} difficulty-badge mr-2">
+                                            {{ question.difficulty }}
+                                        </span>
+                                        <span class="text-sm text-gray-600">
+                                            {{ question.topic }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 space-y-2">
+                                {% for option in question.options %}
+                                <div class="p-3 rounded-lg border border-gray-200 {% if option.is_correct %}option-correct{% endif %}">
+                                    <div class="flex items-start">
+                                        <span class="mr-3 mt-1 text-gray-600 option-number" data-index="{{ loop.index }}"></span>
+                                        <div class="flex-1">
+                                            <p class="text-gray-800">{{ option.text }}</p>
+                                            {% if option.is_correct %}
+                                            <div class="mt-2 flex items-center text-sm text-green-600">
+                                                <i class="fas fa-check-circle mr-1"></i>
+                                                Correct Answer
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Actions Footer -->
+                <div class="mt-6 flex justify-end space-x-3">
+                    <a href="{{ url_for('my_quizzes') }}"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to My Quizzes
+                    </a>
+                    <a href="{{ url_for('index') }}?load_quiz={{ quiz.id }}"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <i class="fas fa-redo mr-2"></i> Retake This Quiz
+                    </a>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Convert number to letter (1=A, 2=B, etc.)
+        function toLetter(num) {
+            return String.fromCharCode(64 + num);
+        }
+        
+        // Apply lettering to option numbers
+        document.querySelectorAll('.option-number').forEach(span => {
+            const index = parseInt(span.getAttribute('data-index'));
+            span.textContent = toLetter(index) + '.';
+        });
+        
+        // Download PDF function
+        function downloadQuizPDF() {
+            fetch('{{ url_for("download_quiz_pdf") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/pdf'
+                },
+                body: JSON.stringify({{ quiz|tojson|safe }})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create blob link to download
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', '{{ quiz.title|replace(" ", "_") }}.pdf');
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode.removeChild(link);
+            })
+            .catch(error => {
+                console.error('Error downloading PDF:', error);
+                alert('Error downloading quiz PDF. Please try again.');
+            });
+        }
+    </script>
+</body>
+</html>
